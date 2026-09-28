@@ -16,7 +16,8 @@ import {
   Lock,
   Unlock,
   LogOut,
-  ShieldAlert
+  ShieldAlert,
+  Trash2
 } from 'lucide-react';
 
 interface LicenseItem {
@@ -203,6 +204,35 @@ export default function AdminDashboard() {
         fetchLicenses();
       } else {
         alert('Failed: ' + data.message);
+      }
+    } catch (err: any) {
+      alert('Error: ' + err.message);
+    }
+  };
+
+  const handleDeleteLicense = async (lic: LicenseItem) => {
+    if (!confirm(`Are you sure you want to PERMANENTLY delete the license for "${lic.company_name}" (${lic.license_key})?\n\nThis action cannot be undone and will immediately unauthorize all connected devices.`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/v1/admin/licenses/${lic.id}`, {
+        method: 'DELETE',
+        headers: { 
+          'x-admin-key': adminKey
+        },
+      });
+
+      if (res.status === 401) {
+        handleLogout();
+        return;
+      }
+
+      const data = await res.json();
+      if (data.success) {
+        fetchLicenses();
+      } else {
+        alert('Failed to delete license: ' + data.message);
       }
     } catch (err: any) {
       alert('Error: ' + err.message);
@@ -452,16 +482,26 @@ export default function AdminDashboard() {
                         )}
                       </td>
                       <td className="py-3.5 px-4 text-right">
-                        <button
-                          onClick={() => handleToggleRevoke(lic)}
-                          className={`px-2.5 py-1 rounded text-xs transition-colors cursor-pointer ${
-                            lic.is_revoked
-                              ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200'
-                              : 'bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/40'
-                          }`}
-                        >
-                          {lic.is_revoked ? 'Restore' : 'Revoke'}
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button
+                            onClick={() => handleToggleRevoke(lic)}
+                            className={`px-2.5 py-1 rounded text-xs transition-colors cursor-pointer ${
+                              lic.is_revoked
+                                ? 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200'
+                                : 'bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 border border-rose-800/40'
+                            }`}
+                            title={lic.is_revoked ? 'Restore License' : 'Revoke License'}
+                          >
+                            {lic.is_revoked ? 'Restore' : 'Revoke'}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteLicense(lic)}
+                            className="p-1 rounded text-xs transition-colors cursor-pointer text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 border border-transparent hover:border-rose-500/20"
+                            title="Permanently Delete License"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
